@@ -7,13 +7,25 @@ export class ExpenseService {
 
   findAll() {
     return this.prisma.expense.findMany({
-      include: {
-        category: true,
-      },
+      include: { category: true },
     });
   }
 
-  create(data: { amount: number; date: string; categoryId: number }) {
-    return this.prisma.expense.create({ data });
+  findAllForUser(userId: number) {
+    return this.prisma.expense.findMany({
+      where: { userId },
+      include: { category: true },
+    });
+  }
+
+  create(data: { amount: number; date: string; categoryId: number; userId: number }) {
+    return this.prisma.expense.create({
+      data: {
+        amount: data.amount,
+        date: new Date(data.date),
+        category: { connect: { id: data.categoryId } },
+        user: { connect: { id: data.userId } },
+      },
+    });
   }
 }
