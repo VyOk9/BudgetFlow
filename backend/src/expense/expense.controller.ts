@@ -1,20 +1,42 @@
-import { Controller, Get, Post, Body, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { ExpenseService } from './expense.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('expenses')
+@UseGuards(JwtAuthGuard)
 export class ExpenseController {
   constructor(private readonly expenseService: ExpenseService) {}
 
   @Get()
-  @UseGuards(JwtAuthGuard)
-  findAll(@Request() req) {
-    return this.expenseService.findAllForUser(req.user.userId);
+  findAll(
+    @Req() req,
+    @Query('categoryId') categoryId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.expenseService.findAll(req.user.id, {
+      categoryId: categoryId ? Number(categoryId) : undefined,
+      from,
+      to,
+    });
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
-  create(@Body() data: { amount: number; date: string; categoryId: number }, @Request() req) {
-    return this.expenseService.create({ ...data, userId: req.user.userId });
+  create(@Req() req, @Body() body: { title: string; description?: string; amount: number; date: string; categoryId: number }) {
+    return this.expenseService.create(req.user.id, body);
+  }
+
+  @Put(':id')
+  update(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() body: { title?: string; description?: string; amount?: number; date?: string; categoryId?: number },
+  ) {
+    return this.expenseService.update(req.user.id, Number(id), body);
+  }
+
+  @Delete(':id')
+  delete(@Req() req, @Param('id') id: string) {
+    return this.expenseService.delete(req.user.id, Number(id));
   }
 }
