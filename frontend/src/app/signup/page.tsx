@@ -42,8 +42,8 @@ export default function SignupPage() {
       <div className="w-full max-w-md">
         <Card className="bg-white/95 backdrop-blur-sm shadow-2xl">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-gray-900">Sign Up</CardTitle>
-            <CardDescription className="text-gray-600">Create your BudgetFlow account</CardDescription>
+            <CardTitle className="text-2xl font-bold text-gray-900">S'inscrire</CardTitle>
+            <CardDescription className="text-gray-600">Créez votre compte BudgetFlow</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSignup} className="space-y-4">
@@ -90,9 +90,9 @@ export default function SignupPage() {
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-                Already have an account?{" "}
+                Vous avez déjà un compte ?{" "}
                 <Link href="/login" className="text-blue-600 hover:underline font-medium">
-                  Log in
+                  Se connecter
                 </Link>
               </p>
             </div>
