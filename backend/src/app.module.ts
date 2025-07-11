@@ -8,6 +8,13 @@ import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
 import { SummaryModule } from './summary/summary.module';
 
+/**
+ * AppModule
+ *
+ * Root module of the application.
+ * Registers global modules such as Prisma, Redis, authentication,
+ * expense management, category management, and summaries.
+ */
 @Module({
   imports: [
     PrismaModule,
