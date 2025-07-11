@@ -1,104 +1,57 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import type React from "react"
 
-interface Expense {
-  id: number
-  title: string
-  amount: number
-  category: {
-    id: number
-    name: string
-  }
-  date: string
-}
+import { useEffect, useState, useMemo, useCallback } from "react"
+import { useRouter } from "next/navigation"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { DashboardLayout } from "@/components/layout/DashboardLayout"
+import { useAuth } from "@/contexts/AuthContext"
+import { useExpenses } from "@/hooks/useExpenses"
+import type { Expense } from "@/types"
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const { user, showWelcome } = useAuth()
+  const { expenses, loading } = useExpenses()
+  const router = useRouter()
+
   const [totalExpenses, setTotalExpenses] = useState(0)
   const [monthlyChange, setMonthlyChange] = useState(0)
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
-  const [showWelcome, setShowWelcome] = useState(false)
-  const router = useRouter()
 
-  useEffect(() => {
-    const token = localStorage.getItem("token")
-    const userData = localStorage.getItem("user")
+  const currentPage = "dashboard"
 
-    if (!token || !userData) {
-      router.push("/login")
-      return
-    }
+  const quickActions = useMemo(
+    () => [
+      { href: "/expenses/new", label: "➕ Ajouter une dépense", key: "add-expense" },
+      { href: "/categories", label: "📁 Gérer les catégories", key: "categories" },
+      { href: "/summary", label: "📊 Voir les résumés", key: "summary" },
+    ],
+    [],
+  )
 
-    const parsedUser = JSON.parse(userData)
-    setUser(parsedUser)
+  const handleMouseDown = useCallback(
+    (href: string, e: React.MouseEvent) => {
+      e.preventDefault()
+      console.log("MouseDown navigation to:", href)
+      router.push(href)
+    },
+    [router],
+  )
 
-    const isNewLogin = localStorage.getItem("isNewLogin")
-    if (isNewLogin === "true") {
-      setShowWelcome(true)
-      localStorage.removeItem("isNewLogin")
-      setTimeout(() => setShowWelcome(false), 3000)
-    }
-
-    loadDashboardData(token)
-  }, [router])
-
-  useEffect(() => {
-    const handleExpenseAdded = () => {
-      const token = localStorage.getItem("token")
-      if (token) {
-        loadDashboardData(token)
-      }
-    }
-
-    window.addEventListener("expenseAdded", handleExpenseAdded)
-
-    return () => {
-      window.removeEventListener("expenseAdded", handleExpenseAdded)
-    }
-  }, [])
-
-  const loadDashboardData = async (token: string) => {
-    try {
-      const expensesRes = await fetch("http://localhost:3001/expenses", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      if (expensesRes.ok) {
-        const expensesData = await expensesRes.json()
-
-        calculateStatistics(expensesData)
-
-        const sortedExpenses = expensesData
-          .sort((a: Expense, b: Expense) => new Date(b.date).getTime() - new Date(a.date).getTime())
-          .slice(0, 5)
-        setRecentExpenses(sortedExpenses)
-      }
-    } catch (error) {
-      console.error("Erreur lors du chargement des données:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const calculateStatistics = (expenses: Expense[]) => {
+  const calculateStatistics = useCallback((expensesData: Expense[]) => {
     const now = new Date()
     const currentMonth = now.getMonth()
     const currentYear = now.getFullYear()
     const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1
     const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear
 
-    const currentMonthExpenses = expenses.filter((expense) => {
+    const currentMonthExpenses = expensesData.filter((expense) => {
       const expenseDate = new Date(expense.date)
       return expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear
     })
 
-    const lastMonthExpenses = expenses.filter((expense) => {
+    const lastMonthExpenses = expensesData.filter((expense) => {
       const expenseDate = new Date(expense.date)
       return expenseDate.getMonth() === lastMonth && expenseDate.getFullYear() === lastMonthYear
     })
@@ -115,140 +68,137 @@ export default function DashboardPage() {
 
     setTotalExpenses(currentTotal)
     setMonthlyChange(change)
-  }
+  }, [])
 
-  const handleLogout = () => {
-    localStorage.removeItem("token")
-    localStorage.removeItem("user")
-    localStorage.removeItem("isNewLogin")
-    router.push("/")
-  }
+  useEffect(() => {
+    if (expenses.length > 0) {
+      calculateStatistics(expenses)
+      const sortedExpenses = expenses
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 5)
+      setRecentExpenses(sortedExpenses)
+    }
+  }, [expenses, calculateStatistics])
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+      <DashboardLayout currentPage={currentPage}>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Chargement des données...</p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <DashboardLayout currentPage={currentPage}>
       {showWelcome && (
         <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in">
           <p className="font-medium">Bienvenue, {user?.email?.split("@")[0] || "Utilisateur"} ! 👋</p>
         </div>
       )}
 
-      <header className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">BudgetFlow</h1>
-          <nav className="hidden md:flex space-x-6">
-            <Link href="/dashboard" className="text-blue-600 font-medium">
-              Tableau de bord
-            </Link>
-            <Link href="/expenses" className="text-gray-600 hover:text-blue-600">
-              Dépenses
-            </Link>
-            <Link href="/categories" className="text-gray-600 hover:text-blue-600">
-              Catégories
-            </Link>
-            <Link href="/summary" className="text-gray-600 hover:text-blue-600">
-              Résumés
-            </Link>
-          </nav>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">Bienvenue, {user?.email?.split("@")[0] || "Utilisateur"}</span>
-            <Button onClick={handleLogout} variant="outline" size="sm">
-              Déconnexion
-            </Button>
-          </div>
-        </div>
-      </header>
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Tableau de bord</h2>
+        <p className="text-gray-600">Gérez vos dépenses et suivez votre budget</p>
+      </div>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Tableau de bord</h2>
-          <p className="text-gray-600">Gérez vos dépenses et suivez votre budget</p>
-        </div>
+      <div className="mb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span>💰</span>
+              Dépenses ce mois
+            </CardTitle>
+            <CardDescription>Total de vos dépenses mensuelles</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-red-600">{totalExpenses.toFixed(2)} €</div>
+            <p className="text-sm text-gray-500 mt-1">
+              {monthlyChange > 0 ? "+" : ""}
+              {monthlyChange.toFixed(1)}% par rapport au mois dernier
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-        <div className="mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <span>💰</span>
-                Dépenses ce mois
-              </CardTitle>
-              <CardDescription>Total de vos dépenses mensuelles</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-600">{totalExpenses.toFixed(2)} €</div>
-              <p className="text-sm text-gray-500 mt-1">
-                {monthlyChange > 0 ? "+" : ""}
-                {monthlyChange.toFixed(1)}% par rapport au mois dernier
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Actions rapides</CardTitle>
-              <CardDescription>Gérez vos dépenses rapidement</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button onClick={() => router.push("/expenses/new")} className="w-full justify-start">
-                ➕ Ajouter une dépense
-              </Button>
-              <Button onClick={() => router.push("/categories")} variant="outline" className="w-full justify-start">
-                📁 Gérer les catégories
-              </Button>
-              <Button onClick={() => router.push("/summary")} variant="outline" className="w-full justify-start">
-                📊 Voir les résumés
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Dépenses récentes</CardTitle>
-              <CardDescription>Vos dernières transactions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {recentExpenses.length > 0 ? (
-                  recentExpenses.map((expense) => (
-                    <div
-                      key={expense.id}
-                      className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0"
-                    >
-                      <div>
-                        <p className="font-medium text-gray-900">{expense.title}</p>
-                        <p className="text-sm text-gray-500">{expense.category.name}</p>
-                        <p className="text-xs text-gray-400">{new Date(expense.date).toLocaleDateString("fr-FR")}</p>
-                      </div>
-                      <span className="font-bold text-red-600">{expense.amount.toFixed(2)} €</span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-sm text-center py-4">Aucune dépense récente</p>
-                )}
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Actions rapides</CardTitle>
+            <CardDescription>Gérez vos dépenses rapidement</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {quickActions.map(({ href, label, key }) => (
+              <div
+                key={key}
+                onMouseDown={(e) => handleMouseDown(href, e)}
+                className="w-full text-left px-4 py-3 rounded-md transition text-gray-600 hover:text-blue-600 hover:bg-gray-50 cursor-pointer border border-transparent hover:border-gray-200 select-none"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    router.push(href)
+                  }
+                }}
+              >
+                {label}
               </div>
-              {recentExpenses.length > 0 && (
-                <div className="mt-4">
-                  <Button onClick={() => router.push("/expenses")} variant="outline" size="sm" className="w-full">
-                    Voir toutes les dépenses
-                  </Button>
-                </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Dépenses récentes</CardTitle>
+            <CardDescription>Vos dernières transactions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentExpenses.length > 0 ? (
+                recentExpenses.map((expense) => (
+                  <div
+                    key={expense.id}
+                    className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0"
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900">{expense.title}</p>
+                      <p className="text-sm text-gray-500">{expense.category.name}</p>
+                      <p className="text-xs text-gray-400">{new Date(expense.date).toLocaleDateString("fr-FR")}</p>
+                    </div>
+                    <span className="font-bold text-red-600">{expense.amount.toFixed(2)} €</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-sm text-center py-4">Aucune dépense récente</p>
               )}
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-    </div>
+            </div>
+
+            {recentExpenses.length > 0 && (
+              <div className="mt-4">
+                <div
+                  onMouseDown={(e) => handleMouseDown("/expenses", e)}
+                  className="block w-full text-center px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition text-sm cursor-pointer select-none"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      router.push("/expenses")
+                    }
+                  }}
+                >
+                  Voir toutes les dépenses
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
   )
 }

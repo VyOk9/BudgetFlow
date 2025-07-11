@@ -1,82 +1,50 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { ExpenseForm } from "@/components/forms/ExpenseForm"
+import { useExpenses } from "@/hooks/useExpenses"
+import { useAuth } from "@/contexts/AuthContext"
+import { LoadingSpinner } from "@/components/common/LoadingSpinner"
+import { ROUTES } from "@/constants"
+import { useEffect } from "react"
 
 export default function NewExpensePage() {
-  const [title, setTitle] = useState("")
-  const [amount, setAmount] = useState("")
-  const [category, setCategory] = useState("")
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0])
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState("")
-  const [messageType, setMessageType] = useState<"success" | "error">("success")
+  const { addExpense } = useExpenses()
+  const { isAuthenticated, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    const token = localStorage.getItem("token")
-    if (!token) {
-      router.push("/login")
-      return
+    if (!loading && !isAuthenticated) {
+      router.replace("/login")
     }
-  }, [router])
+  }, [loading, isAuthenticated, router])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setMessage("")
-
-    const token = localStorage.getItem("token")
-    if (!token) return
-
+  const handleSubmit = async (data: {
+    title: string
+    amount: number
+    category: string
+    date: string
+  }) => {
     try {
-      const res = await fetch("http://localhost:3001/expenses", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title,
-          amount: Number.parseFloat(amount),
-          category,
-          type: "expense",
-          date,
-        }),
-      })
-
-      if (res.ok) {
-        setMessage("Dépense ajoutée avec succès !")
-        setMessageType("success")
-
-        setTitle("")
-        setAmount("")
-        setCategory("")
-        setDate(new Date().toISOString().split("T")[0])
-
-        window.dispatchEvent(new CustomEvent("expenseAdded"))
-
-        setTimeout(() => {
-          router.push("/expenses")
-        }, 1500)
-      } else {
-        const data = await res.json()
-        setMessage(data.message || "Erreur lors de l'ajout")
-        setMessageType("error")
-      }
+      await addExpense(data)
+      router.push("/expenses")
     } catch (error) {
-      setMessage("Erreur réseau")
-      setMessageType("error")
-    } finally {
-      setLoading(false)
+      console.error("Erreur lors de l'ajout de la dépense:", error)
+      throw error
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <LoadingSpinner text="Chargement..." />
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return null
   }
 
   return (
@@ -84,7 +52,7 @@ export default function NewExpensePage() {
       <header className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900">BudgetFlow</h1>
-          <Link href="/expenses" className="text-blue-600 hover:underline">
+          <Link href={ROUTES.EXPENSES} className="text-blue-600 hover:underline">
             ← Retour aux dépenses
           </Link>
         </div>
@@ -92,74 +60,7 @@ export default function NewExpensePage() {
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto">
-          <Card>
-            <CardHeader>
-              <CardTitle>Nouvelle Dépense</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Titre</Label>
-                  <Input
-                    id="title"
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    required
-                    placeholder="Ex: Courses alimentaires"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="amount">Montant (€)</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    step="0.01"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    required
-                    placeholder="0.00"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="category">Catégorie</Label>
-                  <Input
-                    id="category"
-                    type="text"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    required
-                    placeholder="Ex: Alimentation, Transport..."
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="date">Date</Label>
-                  <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-                </div>
-
-                <Button type="submit" disabled={loading} className="w-full">
-                  {loading ? "Ajout en cours..." : "Ajouter la dépense"}
-                </Button>
-              </form>
-
-              {message && (
-                <div
-                  className={`mt-4 p-3 rounded-md ${
-                    messageType === "success"
-                      ? "bg-green-50 border border-green-200"
-                      : "bg-red-50 border border-red-200"
-                  }`}
-                >
-                  <p className={`text-sm ${messageType === "success" ? "text-green-800" : "text-red-800"}`}>
-                    {message}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <ExpenseForm onSubmit={handleSubmit} />
         </div>
       </main>
     </div>

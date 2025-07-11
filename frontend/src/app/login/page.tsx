@@ -1,13 +1,14 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useAuth } from "@/contexts/AuthContext"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -15,6 +16,13 @@ export default function LoginPage() {
   const [message, setMessage] = useState("")
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const { login, isAuthenticated, isReady } = useAuth()
+
+  useEffect(() => {
+    if (isAuthenticated && isReady) {
+      router.push("/dashboard")
+    }
+  }, [isAuthenticated, isReady, router])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -22,26 +30,14 @@ export default function LoginPage() {
     setMessage("")
 
     try {
-      const res = await fetch("http://localhost:3001/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      })
+      await login(email, password)
+      setMessage("Connexion réussie !")
 
-      const data = await res.json()
-
-      if (res.ok) {
-        localStorage.setItem("token", data.access_token)
-        localStorage.setItem("user", JSON.stringify(data.user))
-        localStorage.setItem("isNewLogin", "true")
-
-        setMessage("Connexion réussie !")
-        setTimeout(() => router.push("/dashboard"), 1000)
-      } else {
-        setMessage(data.message || "Identifiants invalides")
-      }
+      setTimeout(() => {
+        router.push("/dashboard")
+      }, 200)
     } catch (error) {
-      setMessage("Erreur réseau ou serveur. Veuillez réessayer plus tard.")
+      setMessage("Identifiants invalides")
       console.error("Login error:", error)
     } finally {
       setLoading(false)
