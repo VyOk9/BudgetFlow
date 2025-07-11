@@ -1,13 +1,13 @@
 "use client"
 
-import type React from "react"
 import { useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { AuthService } from "../../services/auth.service"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import Link from "next/link"
 
 export default function SignupPage() {
   const [email, setEmail] = useState("")
@@ -22,27 +22,16 @@ export default function SignupPage() {
     setMessage("")
 
     try {
-      const res = await fetch("http://localhost:3001/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      })
-      const data = await res.json()
+      const user = await AuthService.signup(email, password)
+      localStorage.setItem("newUser", JSON.stringify(user))
 
-      if (res.ok) {
-        localStorage.setItem("newUser", JSON.stringify(data))
+      setMessage(`Signup successful for ${user.email}. You can now log in.`)
+      setEmail("")
+      setPassword("")
 
-        setMessage(`Inscription réussie ! Compte créé pour ${data.email}. Vous pouvez maintenant vous connecter.`)
-        setEmail("")
-        setPassword("")
-
-        setTimeout(() => router.push("/login"), 2000)
-      } else {
-        setMessage(data.message || "Erreur lors de l'inscription")
-      }
-    } catch (error) {
-      setMessage("Erreur réseau ou serveur.")
-      console.log("Signup error:", error)
+      setTimeout(() => router.push("/login"), 1500)
+    } catch (error: any) {
+      setMessage(error.message || "Signup failed")
     } finally {
       setLoading(false)
     }
@@ -53,8 +42,8 @@ export default function SignupPage() {
       <div className="w-full max-w-md">
         <Card className="bg-white/95 backdrop-blur-sm shadow-2xl">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-gray-900">Inscription</CardTitle>
-            <CardDescription className="text-gray-600">Créez votre compte BudgetFlow</CardDescription>
+            <CardTitle className="text-2xl font-bold text-gray-900">Sign Up</CardTitle>
+            <CardDescription className="text-gray-600">Create your BudgetFlow account</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSignup} className="space-y-4">
@@ -63,51 +52,47 @@ export default function SignupPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="votre@email.com"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  autoComplete="email"
                 />
               </div>
 
               <div>
-                <Label htmlFor="password">Mot de passe</Label>
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Choisissez un mot de passe"
+                  placeholder="Choose a secure password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  autoComplete="new-password"
                 />
               </div>
 
               <Button type="submit" disabled={loading} className="w-full">
-                {loading ? "Inscription..." : "S'inscrire"}
+                {loading ? "Signing up..." : "Sign Up"}
               </Button>
             </form>
 
             {message && (
               <div
                 className={`mt-4 p-3 rounded-md ${
-                  message.includes("réussie")
-                    ? "bg-green-50 border border-green-200"
-                    : "bg-red-50 border border-red-200"
+                  message.includes("successful")
+                    ? "bg-green-50 border border-green-200 text-green-800"
+                    : "bg-red-50 border border-red-200 text-red-800"
                 }`}
               >
-                <p className={`text-sm ${message.includes("réussie") ? "text-green-800" : "text-red-800"}`}>
-                  {message}
-                </p>
+                {message}
               </div>
             )}
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-                Déjà un compte ?{" "}
+                Already have an account?{" "}
                 <Link href="/login" className="text-blue-600 hover:underline font-medium">
-                  Se connecter
+                  Log in
                 </Link>
               </p>
             </div>

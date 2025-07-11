@@ -37,8 +37,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const token = AuthService.getToken()
         const userData = AuthService.getStoredUser()
 
-        console.log("Auth init - Token:", !!token, "User:", !!userData)
-
         if (token && userData) {
           setUser(userData)
 
@@ -64,7 +62,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       const response = await AuthService.login(email, password)
-      console.log("Login successful, setting user:", response.user)
 
       setUser(response.user)
       setShowWelcome(true)

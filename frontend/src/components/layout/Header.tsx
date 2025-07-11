@@ -16,10 +16,6 @@ export function Header({ currentPage, onLogout, user }: HeaderProps) {
     { href: ROUTES.SUMMARY, label: "Résumés", key: "summary" },
   ]
 
-  const handleClick = (label: string) => {
-    console.log(`Navigation vers : ${label}`)
-  }
-
   return (
     <header className="bg-white shadow-sm border-b">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
@@ -27,16 +23,15 @@ export function Header({ currentPage, onLogout, user }: HeaderProps) {
 
         <nav className="hidden md:flex space-x-6">
           {navItems.map((item) => (
-            <Link
-              key={item.key}
-              href={item.href}
-              className={`${
-                currentPage === item.key ? "text-blue-600 font-medium" : "text-gray-600 hover:text-blue-600"
-              }`}
-              onClick={() => handleClick(item.label)}
-            >
-              {item.label}
-            </Link>
+           <Link
+            key={item.key}
+            href={item.href}
+            className={`${
+              currentPage === item.key ? "text-blue-600 font-medium" : "text-gray-600 hover:text-blue-600"
+            }`}
+          >
+            {item.label}
+          </Link>
           ))}
         </nav>
 

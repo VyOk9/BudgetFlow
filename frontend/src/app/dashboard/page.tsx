@@ -33,7 +33,6 @@ export default function DashboardPage() {
   const handleMouseDown = useCallback(
     (href: string, e: React.MouseEvent) => {
       e.preventDefault()
-      console.log("MouseDown navigation to:", href)
       router.push(href)
     },
     [router],

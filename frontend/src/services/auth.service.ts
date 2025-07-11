@@ -14,20 +14,19 @@ export class AuthService {
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.user))
       localStorage.setItem(STORAGE_KEYS.IS_NEW_LOGIN, "true")
     }
-
-    console.log("AuthService - Login réussi, token stocké")
     return response
   }
 
   static async signup(email: string, password: string): Promise<User> {
-    return apiClient.post<User>(API_ENDPOINTS.AUTH.SIGNUP, {
-      email,
-      password,
-    })
+    try {
+      const response = await apiClient.post<User>(API_ENDPOINTS.AUTH.SIGNUP, { email, password })
+      return response
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || "Signup failed")
+    }
   }
 
   static logout(): void {
-    console.log("AuthService - Logout")
     if (typeof window !== "undefined") {
       localStorage.removeItem(STORAGE_KEYS.TOKEN)
       localStorage.removeItem(STORAGE_KEYS.USER)
@@ -62,7 +61,6 @@ export class AuthService {
     const token = this.getToken()
     const user = this.getStoredUser()
     const isAuth = !!(token && user)
-    console.log("AuthService - isAuthenticated:", isAuth, "Token:", !!token, "User:", !!user)
     return isAuth
   }
 
