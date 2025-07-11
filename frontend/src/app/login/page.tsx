@@ -16,13 +16,13 @@ export default function LoginPage() {
   const [message, setMessage] = useState("")
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const { login, isAuthenticated, isReady } = useAuth()
+  const { login, isAuthenticated } = useAuth()
 
   useEffect(() => {
-    if (isAuthenticated && isReady) {
+    if (isAuthenticated) {
       router.push("/dashboard")
     }
-  }, [isAuthenticated, isReady, router])
+  }, [isAuthenticated, router])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()

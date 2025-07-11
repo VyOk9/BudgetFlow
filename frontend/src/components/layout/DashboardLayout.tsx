@@ -23,7 +23,6 @@ export function DashboardLayout({ children, currentPage }: DashboardLayoutProps)
 
   useEffect(() => {
     if (mounted && !loading && !isAuthenticated) {
-      console.log("Not authenticated, redirecting to login")
       router.replace("/login")
     }
   }, [mounted, loading, isAuthenticated, router])

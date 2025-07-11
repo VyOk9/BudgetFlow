@@ -7,11 +7,19 @@ import * as bcrypt from 'bcrypt';
 export class AuthService {
   constructor(private prisma: PrismaService, private jwt: JwtService) {}
 
+  /**
+   * Registers a new user with hashed password.
+   * Throws ConflictException if email is already registered.
+   *
+   * @param email - User's email address
+   * @param password - Plain text password to be hashed
+   * @returns The newly created user (id, email, createdAt)
+   */
   async signup(email: string, password: string) {
     const existingUser = await this.prisma.user.findUnique({ where: { email } });
 
     if (existingUser) {
-      throw new ConflictException('Un utilisateur avec cet email existe déjà.');
+      throw new ConflictException('A user with this email already exists.');
     }
 
     const hash = await bcrypt.hash(password, 10);
@@ -31,11 +39,19 @@ export class AuthService {
     return newUser;
   }
 
+  /**
+   * Authenticates user credentials.
+   * Throws UnauthorizedException if email not found or password mismatch.
+   *
+   * @param email - User's email address
+   * @param password - Plain text password to verify
+   * @returns JWT access token and user info (id, email, createdAt)
+   */
   async login(email: string, password: string) {
     const user = await this.prisma.user.findUnique({ where: { email } });
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      throw new UnauthorizedException('Identifiants invalides');
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     const token = await this.jwt.signAsync({ sub: user.id, email });
