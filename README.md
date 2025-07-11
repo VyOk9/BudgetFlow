@@ -176,6 +176,10 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/budgetflow?schema=pu
 Then run:
 
 ```bash
+# Install Prisma CLI if not already
+npm install prisma --save-dev
+npm install @prisma/client
+
 # Generate client
 npx prisma generate
 
