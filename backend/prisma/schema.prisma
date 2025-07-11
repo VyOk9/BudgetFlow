@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"  // ou "mysql", "sqlite", selon ta base
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -20,7 +20,7 @@ model User {
 model Category {
   id         Int        @id @default(autoincrement())
   name       String
-  userId     Int        // obligatoire
+  userId     Int
   user       User       @relation(fields: [userId], references: [id])
   isDefault  Boolean    @default(false)
   expenses   Expense[]
