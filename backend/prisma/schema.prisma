@@ -1,3 +1,13 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"  // ou "mysql", "sqlite", selon ta base
+  url      = env("DATABASE_URL")
+}
+
+
 model User {
   id         Int        @id @default(autoincrement())
   email      String     @unique
@@ -10,8 +20,8 @@ model User {
 model Category {
   id         Int        @id @default(autoincrement())
   name       String
-  userId     Int?
-  user       User?      @relation(fields: [userId], references: [id])
+  userId     Int        // obligatoire
+  user       User       @relation(fields: [userId], references: [id])
   isDefault  Boolean    @default(false)
   expenses   Expense[]
   createdAt  DateTime   @default(now())
@@ -21,14 +31,15 @@ model Category {
 }
 
 model Expense {
-  id         Int       @id @default(autoincrement())
-  title      String
+  id          Int       @id @default(autoincrement())
+  title       String
   description String?
-  amount     Float
-  date       DateTime
-  categoryId Int
-  userId     Int
-  user       User      @relation(fields: [userId], references: [id])
-  category   Category  @relation(fields: [categoryId], references: [id])
-  updatedAt  DateTime  @updatedAt
+  amount      Float
+  date        DateTime
+  categoryId  Int
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id])
+  category    Category  @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

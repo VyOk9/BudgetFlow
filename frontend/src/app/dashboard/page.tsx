@@ -1,153 +1,204 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import type React from "react"
+
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { LogOut, Plus, TrendingUp, TrendingDown, Wallet } from "lucide-react"
+import { DashboardLayout } from "@/components/layout/DashboardLayout"
+import { useAuth } from "@/contexts/AuthContext"
+import { useExpenses } from "@/hooks/useExpenses"
+import type { Expense } from "@/types"
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const { user, showWelcome } = useAuth()
+  const { expenses, loading } = useExpenses()
   const router = useRouter()
 
-  useEffect(() => {
-    const token = localStorage.getItem("token")
-    if (!token) {
-      router.push("/login")
-      return
+  const [totalExpenses, setTotalExpenses] = useState(0)
+  const [monthlyChange, setMonthlyChange] = useState(0)
+  const [recentExpenses, setRecentExpenses] = useState<Expense[]>([])
+
+  const currentPage = "dashboard"
+
+  const quickActions = useMemo(
+    () => [
+      { href: "/expenses/new", label: "➕ Ajouter une dépense", key: "add-expense" },
+      { href: "/categories", label: "📁 Gérer les catégories", key: "categories" },
+      { href: "/summary", label: "📊 Voir les résumés", key: "summary" },
+    ],
+    [],
+  )
+
+  const handleMouseDown = useCallback(
+    (href: string, e: React.MouseEvent) => {
+      e.preventDefault()
+      console.log("MouseDown navigation to:", href)
+      router.push(href)
+    },
+    [router],
+  )
+
+  const calculateStatistics = useCallback((expensesData: Expense[]) => {
+    const now = new Date()
+    const currentMonth = now.getMonth()
+    const currentYear = now.getFullYear()
+    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1
+    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear
+
+    const currentMonthExpenses = expensesData.filter((expense) => {
+      const expenseDate = new Date(expense.date)
+      return expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear
+    })
+
+    const lastMonthExpenses = expensesData.filter((expense) => {
+      const expenseDate = new Date(expense.date)
+      return expenseDate.getMonth() === lastMonth && expenseDate.getFullYear() === lastMonthYear
+    })
+
+    const currentTotal = currentMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0)
+    const lastTotal = lastMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0)
+
+    let change = 0
+    if (lastTotal > 0) {
+      change = ((currentTotal - lastTotal) / lastTotal) * 100
+    } else if (currentTotal > 0) {
+      change = 100
     }
 
-    setTimeout(() => {
-      setUser({ email: "utilisateur@example.com" })
-      setLoading(false)
-    }, 1000)
-  }, [router])
+    setTotalExpenses(currentTotal)
+    setMonthlyChange(change)
+  }, [])
 
-  const handleLogout = () => {
-    localStorage.removeItem("token")
-    router.push("/")
-  }
+  useEffect(() => {
+    if (expenses.length > 0) {
+      calculateStatistics(expenses)
+      const sortedExpenses = expenses
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 5)
+      setRecentExpenses(sortedExpenses)
+    }
+  }, [expenses, calculateStatistics])
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+      <DashboardLayout currentPage={currentPage}>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Chargement des données...</p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">BudgetFlow</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">Bienvenue, {user?.email}</span>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Déconnexion
-            </Button>
-          </div>
+    <DashboardLayout currentPage={currentPage}>
+      {showWelcome && (
+        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in">
+          <p className="font-medium">Bienvenue, {user?.email?.split("@")[0] || "Utilisateur"} ! 👋</p>
         </div>
-      </header>
+      )}
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Tableau de bord</h2>
-          <p className="text-gray-600">Gérez votre budget et suivez vos finances</p>
-        </div>
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Tableau de bord</h2>
+        <p className="text-gray-600">Gérez vos dépenses et suivez votre budget</p>
+      </div>
 
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Solde total</CardTitle>
-              <Wallet className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">2 450,00 €</div>
-              <p className="text-xs text-muted-foreground">+12% par rapport au mois dernier</p>
-            </CardContent>
-          </Card>
+      <div className="mb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span>💰</span>
+              Dépenses ce mois
+            </CardTitle>
+            <CardDescription>Total de vos dépenses mensuelles</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-red-600">{totalExpenses.toFixed(2)} €</div>
+            <p className="text-sm text-gray-500 mt-1">
+              {monthlyChange > 0 ? "+" : ""}
+              {monthlyChange.toFixed(1)}% par rapport au mois dernier
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Revenus ce mois</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">3 200,00 €</div>
-              <p className="text-xs text-muted-foreground">+8% par rapport au mois dernier</p>
-            </CardContent>
-          </Card>
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Actions rapides</CardTitle>
+            <CardDescription>Gérez vos dépenses rapidement</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {quickActions.map(({ href, label, key }) => (
+              <div
+                key={key}
+                onMouseDown={(e) => handleMouseDown(href, e)}
+                className="w-full text-left px-4 py-3 rounded-md transition text-gray-600 hover:text-blue-600 hover:bg-gray-50 cursor-pointer border border-transparent hover:border-gray-200 select-none"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    router.push(href)
+                  }
+                }}
+              >
+                {label}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Dépenses ce mois</CardTitle>
-              <TrendingDown className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">750,00 €</div>
-              <p className="text-xs text-muted-foreground">-5% par rapport au mois dernier</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Actions rapides</CardTitle>
-              <CardDescription>Gérez vos finances rapidement</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button className="w-full justify-start">
-                <Plus className="h-4 w-4 mr-2" />
-                Ajouter une transaction
-              </Button>
-              <Button variant="outline" className="w-full justify-start bg-transparent">
-                <Plus className="h-4 w-4 mr-2" />
-                Créer un budget
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Transactions récentes</CardTitle>
-              <CardDescription>Vos dernières activités</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-medium">Courses alimentaires</p>
-                    <p className="text-sm text-gray-600">Aujourd'hui</p>
+        <Card>
+          <CardHeader>
+            <CardTitle>Dépenses récentes</CardTitle>
+            <CardDescription>Vos dernières transactions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentExpenses.length > 0 ? (
+                recentExpenses.map((expense) => (
+                  <div
+                    key={expense.id}
+                    className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0"
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900">{expense.title}</p>
+                      <p className="text-sm text-gray-500">{expense.category.name}</p>
+                      <p className="text-xs text-gray-400">{new Date(expense.date).toLocaleDateString("fr-FR")}</p>
+                    </div>
+                    <span className="font-bold text-red-600">{expense.amount.toFixed(2)} €</span>
                   </div>
-                  <Badge variant="destructive">-45,20 €</Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-medium">Salaire</p>
-                    <p className="text-sm text-gray-600">Il y a 2 jours</p>
-                  </div>
-                  <Badge variant="default">+2 800,00 €</Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-medium">Essence</p>
-                    <p className="text-sm text-gray-600">Il y a 3 jours</p>
-                  </div>
-                  <Badge variant="destructive">-65,00 €</Badge>
+                ))
+              ) : (
+                <p className="text-gray-500 text-sm text-center py-4">Aucune dépense récente</p>
+              )}
+            </div>
+
+            {recentExpenses.length > 0 && (
+              <div className="mt-4">
+                <div
+                  onMouseDown={(e) => handleMouseDown("/expenses", e)}
+                  className="block w-full text-center px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition text-sm cursor-pointer select-none"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      router.push("/expenses")
+                    }
+                  }}
+                >
+                  Voir toutes les dépenses
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-    </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
   )
 }
